@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Shopping Homepage</title>
+</head>
+<body>
+    <h1>Welcome to Our Shopping Site</h1>
+
+    <h2>Featured Products</h2>
+    <ul>
+        {% for product in products %}
+            <li>
+                <h3>{{ product.name }}</h3>
+                <p>Price: ${{ product.price }}</p>
+                <p>Description: {{ product.description }}</p>
+            </li>
+        {% empty %}
+            <li>No products available at the moment.</li>
+        {% endfor %}
+    </ul>
+
+    <!-- Add links or buttons for navigation here -->
+</body>
+</html>
