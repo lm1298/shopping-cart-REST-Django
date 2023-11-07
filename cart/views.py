@@ -4,11 +4,17 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from cart.service import Cart
-from .serializers import ProductSerializer
+from .serializers import ProductSerializer, UserSerializer, ProductDetailSerializer
 from .models import Product
 from django.contrib.auth.models import User
 from rest_framework import viewsets
 
+class UserViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint that allows users to be viewed or edited.
+    """
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
 
 class ProductAPI(APIView):
     """
@@ -26,7 +32,6 @@ class ProductAPI(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
-
 
 
 class CartAPI(APIView):
@@ -60,3 +65,6 @@ class CartAPI(APIView):
 
         return Response({"message": "cart updated"}, status=status.HTTP_202_ACCEPTED)
 
+def home(request):
+    products = Product.objects.all()
+    return render(request, 'home.html', {'products': products})
