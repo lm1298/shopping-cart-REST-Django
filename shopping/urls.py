@@ -20,7 +20,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 
-from mysite import settings
+from shopping import settings
 from cart import views
 
 urlpatterns = [
@@ -28,6 +28,8 @@ urlpatterns = [
     path('products', ProductAPI.as_view(), name='products'),
     path('', views.home, name='home'),
     path('cart', CartAPI.as_view(), name='cart'),
+    path('products/<int:pk>/', views.ProductDetailAPI.as_view(), name='product-detail'),
+    path('products/<int:pk>/delete/', views.ProductDetailAPI.as_view(), name='product-delete'),
 ]
 
 
