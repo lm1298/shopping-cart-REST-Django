@@ -11,6 +11,7 @@ class Product(models.Model):
     is_available = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     modified_at = models.DateTimeField(auto_now=True)
+    id = models.BigAutoField(primary_key=True)
 
     def __str__(self) -> str:
         return str(self.name)
