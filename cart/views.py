@@ -2,7 +2,7 @@ from django.shortcuts import render
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from cart.service import Cart
 from .serializers import ProductSerializer, UserSerializer, ProductDetailSerializer
 from .models import Product
@@ -33,6 +33,19 @@ class ProductAPI(APIView):
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+class ProductDetailAPI(generics.RetrieveUpdateDestroyAPIView):
+    """
+    API to handle individual product operations (GET, PUT, DELETE)
+    """
+    serializer_class = ProductDetailSerializer
+    permission_classes = [IsAdminUser]  # Ensures only admin users can access
+
+    def get_queryset(self):
+        return Product.objects.all()
+
+    # Add delete functionality
+    def perform_destroy(self, instance):
+        instance.delete()
 
 class CartAPI(APIView):
     """
