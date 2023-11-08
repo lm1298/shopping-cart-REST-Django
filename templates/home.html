@@ -2,21 +2,36 @@
 <html>
 <head>
     <title>Shopping Homepage</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+
     <style>
         /* CSS styles for basic formatting */
         body {
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 0;
-            background-color: #f4f4f4;
+            background-color: grey;
             text-align: center;
         }
         h1 {
             color: #333;
-            background-color: #00ff44; 
+            background-color: palegreen; 
             padding: 10px;
             border-radius: 5px;
             display: inline-block;
+            width: 80%;
+            margin: 20px auto;
+        }
+        .login-icons {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            padding: 10px;
+        }
+        .login-icons a {
+            margin-left: 10px;
+            color: #333;
+            text-decoration: none;
         }
         h2 {
             color: #666;
@@ -40,6 +55,10 @@
     </style>
 </head>
 <body>
+    <div class="login-icons">
+        <a href="#"><i class="fas fa-user"></i></a> <!-- User icon -->
+        <a href="#"><i class="fas fa-sign-in-alt"></i></a> <!-- Sign-in icon -->
+    </div>
     <h1> Welcome to Our Shopping Site </h1>
 
     <h2>Featured Products</h2>
