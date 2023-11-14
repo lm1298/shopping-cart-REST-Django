@@ -15,7 +15,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from cart.views import CartAPI, DetailUser, ListUser, ProductAPI
+from cart.views import CartAPI, CartDetailAPI, DetailUser, ListUser, ProductAPI
 from django.conf import settings
 from django.conf.urls.static import static
 
@@ -27,8 +27,9 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('products', ProductAPI.as_view(), name='products'),
     path('', views.home, name='home'),
-    path('cart', CartAPI.as_view(), name='cart'),
+    path('cart/', CartAPI.as_view(), name='cart-api'),
     path('products/<int:pk>/', views.ProductDetailAPI.as_view(), name='product-detail'),
+    path('cart/<int:pk>/', views.CartDetailAPI.as_view(), name='cart-detail'),
     path('products/<int:pk>/delete/', views.ProductDetailAPI.as_view(), name='product-delete'),
     path('users', ListUser.as_view(), name='users'),
     path('users/<int:pk>/', DetailUser.as_view(), name='singleuser'),
