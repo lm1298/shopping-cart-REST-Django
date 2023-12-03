@@ -18,10 +18,13 @@ class Cart:
             cart = self.session[settings.CART_SESSION_ID] = {}
         self.cart = cart
 
+    def __iter__(self):    
+        return iter(self.items)
+    
     def save(self):
         self.session.modified = True
 
-    def add(self, product, quantity=1, overide_quantity=False):
+    def add(self, product, quantity=1, override_quantity=False):
         """
         Add product to the cart or update its quantity
         """
@@ -32,11 +35,12 @@ class Cart:
                 "quantity": 0,
                 "price": str(product["price"])
             }
-        if overide_quantity:
+        if override_quantity:
             self.cart[product_id]["quantity"] = quantity
         else:
             self.cart[product_id]["quantity"] += quantity
         self.save()
+
 
     def remove(self, product):
         """
