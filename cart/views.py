@@ -1,20 +1,54 @@
+"""
+Module: views
+Description: Contains views for handling API requests and rendering HTML pages.
+
+References:
+1. https://github.com/propenster/youtube-django-ecommerce-api.git
+2. https://dev.to/nick_langat/building-a-shopping-cart-using-django-rest-framework-54i0
+3. https://github.com/F4R4N/shop-django-rest-framework.git
+4. https://github.com/jessanettica/simple-shopping-api.git
+"""
 import uuid
 from django.shortcuts import render
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAdminUser
-from cart.service import Cart
-from .serializers import  ProductSerializer, UserSerializer, ProductDetailSerializer, RegistrationSerializer
-from .models import Product
-from django.contrib.auth.models import User
-from rest_framework import viewsets
-from rest_framework import permissions
 from rest_framework.decorators import action
-
+from rest_framework import viewsets, permissions
+from django.contrib.auth.models import User
+from cart.service import Cart
 from cart import serializers
+from .serializers import ProductSerializer, UserSerializer
+from .serializers import ProductDetailSerializer, RegistrationSerializer
+from .models import Product
 
-class RegistrationAPIView(generics.GenericAPIView):
+class RegistrationMixin:
+    """
+    A mixin providing user registration functionality.
+    """
+    serializer_class = RegistrationSerializer
+
+    def register_user(self, request):
+        """
+        Register a user based on the provided request data.
+
+        Args:
+            request (HttpRequest): The HTTP request object containing user registration data.
+
+        Returns:
+            Response: JSON response containing the registration status and user details.
+        """
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                "RequestId": str(uuid.uuid4()),
+                "Message": "User created successfully",
+                "User": serializer.data}, status=status.HTTP_201_CREATED)
+        return Response({"Errors": serializers.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+class RegistrationAPIView(generics.GenericAPIView, RegistrationMixin):
     """
     API view for user registration.
 
@@ -22,33 +56,11 @@ class RegistrationAPIView(generics.GenericAPIView):
 
     References: https://github.com/propenster/youtube-django-ecommerce-api.git
     """
-
-    serializer_class = RegistrationSerializer
-
     def post(self, request):
         """
-        Handle POST requests for user registration.
-
-        Args:
-            request: HTTP request object.
-
-        Returns:
-            Response: JSON response containing registration status and user details.
+        POST method for user registration.
         """
-        
-        serializer = self.get_serializer(data = request.data)
-        # serializer.is_valid(raise_exception = True)
-        # serializer.save()
-        if(serializer.is_valid()):
-            serializer.save()
-            return Response({
-                "RequestId": str(uuid.uuid4()),
-                "Message": "User created successfully",
-                
-                "User": serializer.data}, status=status.HTTP_201_CREATED
-                )
-        
-        return Response({"Errors": serializers.errors}, status=status.HTTP_400_BAD_REQUEST)
+        return self.register_user(request)
 
 class ListUser(generics.ListCreateAPIView):
     """
@@ -62,6 +74,7 @@ class ListUser(generics.ListCreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
+
 class DetailUser(generics.RetrieveUpdateDestroyAPIView):
     """
     API view to retrieve, update, and delete user details.
@@ -74,46 +87,36 @@ class DetailUser(generics.RetrieveUpdateDestroyAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
+
 class UserViewSet(viewsets.ModelViewSet):
     """
     API endpoint that allows users to be viewed or edited.
 
-    Reference: https://github.com/jessanettica/simple-shopping-api.git
+    Reference: https://github.com/jessanettica/simple-shopping-api.git.
     """
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
+
 class ProductAPI(APIView):
     """
-    Single API to handle product operations 
+    Single API to handle product operations
 
-    Reference: https://dev.to/nick_langat/building-a-shopping-cart-using-django-rest-framework-54i0
+    Reference: https://dev.to/nick_langat/building-a-shopping-cart-using-django-rest-framework-54i0.
     """
     serializer_class = ProductSerializer
 
-    def get(self, request, format=None):
+    def get(self):
         """
         Handle GET requests to retrieve a list of products.
-
-        Args:
-            request: HTTP request object.
-            format: Format of the requested data.
-
-        Returns:
-            Response: JSON response containing the list of products.
         """
-        qs = Product.objects.all()
-        serializer = self.serializer_class(qs, many=True)
+        q_s = Product.objects.all()
+        serializer = self.serializer_class(q_s, many=True)
         return Response({"data": serializer.data}, status=status.HTTP_200_OK)
 
-    def post(self, request, *args, **kwargs):
+    def post(self, request):
         """
         Handle POST requests to create a new product.
-
-        Args:
-            request: HTTP request object.
-            args: Additional arguments.
-            kwargs: Additional keyword arguments.
 
         Returns:
             Response: JSON response containing the details of the created product.
@@ -123,12 +126,13 @@ class ProductAPI(APIView):
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+
 class ProductDetailAPI(generics.RetrieveUpdateDestroyAPIView):
     """
     API to handle individual product operations (GET, PUT, DELETE)
     """
     serializer_class = ProductDetailSerializer
-    permission_classes = [IsAdminUser]  
+    permission_classes = [IsAdminUser]
 
     def get_queryset(self):
         return Product.objects.all()
@@ -136,20 +140,24 @@ class ProductDetailAPI(generics.RetrieveUpdateDestroyAPIView):
     def perform_destroy(self, instance):
         instance.delete()
 
+
 class CartAPI(APIView):
     """
     Single API to handle cart operations
 
     Contributors: Prasanna
-    References: 
-    1. https://github.com/F4R4N/shop-django-rest-framework.git
-    2. https://github.com/jessanettica/simple-shopping-api.git 
+    References:
+    1. https://github.com/F4R4N/shop-django-rest-framework.git .
+    2. https://github.com/jessanettica/simple-shopping-api.git .
     """
-    def get(self, request, format=None):
+    def get(self, request):
+        """
+        GET method for CartAPI view.
+        """
         cart = Cart(request)
         return Response(
-            {"data": list(cart), 
-            "cart_total_price": cart.get_total_price()},
+            {"data": list(cart),
+             "cart_total_price": cart.get_total_price()},
             status=status.HTTP_200_OK
         )
 
@@ -169,13 +177,12 @@ class CartAPI(APIView):
         if product_id:
             cart.remove(product_id)
             return Response({"message": "Product removed from the cart"}, status=status.HTTP_200_OK)
-        else:
-            return Response({"error": "Product ID is required"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": "Product ID is required"}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=['post'], url_path='clear-cart')
     def clear_cart(self, request):
         """
-        Handle POST requests to clear the entire cart.
+                Handle POST requests to clear the entire cart.
 
         Args:
             request: HTTP request object.
@@ -186,14 +193,13 @@ class CartAPI(APIView):
         cart = Cart(request)
         cart.clear()
         return Response({"message": "Cart cleared successfully"}, status=status.HTTP_200_OK)
-    
-    def post(self, request, **kwargs):
+
+    def post(self, request):
         """
         Handle POST requests to update the cart.
 
         Args:
             request: HTTP request object.
-            kwargs: Additional keyword arguments.
 
         Returns:
             Response: JSON response indicating the status of the cart update operation.
@@ -218,7 +224,6 @@ class CartAPI(APIView):
             status=status.HTTP_202_ACCEPTED
         )
 
-    
 def home(request):
     """
     Render the home page.
