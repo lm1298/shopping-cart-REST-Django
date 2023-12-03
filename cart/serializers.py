@@ -32,6 +32,11 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ('username', 'email')
 
 class ProductSerializer(serializers.ModelSerializer):
+    """
+    Serializer for Product model.
+
+    Reference: https://dev.to/nick_langat/building-a-shopping-cart-using-django-rest-framework-54i0.
+    """
     class Meta:
         model = Product
         fields = "__all__"
@@ -43,10 +48,6 @@ class ProductDetailSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class CartItemSerializer(serializers.Serializer):
-    product = serializers.IntegerField()
+    product_id = serializers.IntegerField()
     quantity = serializers.IntegerField()
     override_quantity = serializers.BooleanField(default=False)
-
-class CartDetailSerializer(serializers.Serializer):
-    items = CartItemSerializer(many=True)
-    cart_total_price = serializers.DecimalField(max_digits=10, decimal_places=2)

@@ -7,6 +7,25 @@ from .models import Product
 
 
 class Cart:
+    """
+    A class representing a shopping cart.
+
+    The cart is stored in the user's session and contains information
+    about the products added, their quantities, and total price.
+
+    Methods:
+    - __init__: Initialize the cart.
+    - __iter__: Allow iteration over cart items.
+    - save: Save the cart to the session.
+    - add: Add a product to the cart or update its quantity.
+    - remove: Remove a product from the cart.
+    - __len__: Get the total number of items in the cart.
+    - get_total_price: Get the total price of all items in the cart.
+    - clear: Clear the entire cart.
+
+    Reference:
+    https://dev.to/nick_langat/building-a-shopping-cart-using-django-rest-framework-54i0
+    """
     def __init__(self, request):
         """
         initialize the cart
