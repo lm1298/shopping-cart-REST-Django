@@ -56,28 +56,35 @@
 </head>
 <body>
     <div class="login-icons">
-        <a href="#"><i class="fas fa-user"></i></a> <!-- User icon -->
-        <a href="#"><i class="fas fa-sign-in-alt"></i></a> <!-- Sign-in icon -->
+        <a href="{% url 'cart' %}"><i class="fas fa-shopping-cart"></i></a>
     </div>
     <h1> Welcome to Our Shopping Site </h1>
 
     <h2>Featured Products</h2>
-    <ul>
-        {% for product in products %}
-            <li>
-                <h3>{{ product.name }}</h3>
-                {% if product.image %}
-                    <img src="{{ product.image.url }}" alt="{{ product.name }}">
-                {% else %}
-                    <p>No image available</p>
-                {% endif %}
-                <p>Price: ${{ product.price }}</p>
-                <p>Description: {{ product.description }}</p>
-            </li>
-        {% empty %}
-            <li>No products available at the moment.</li>
-        {% endfor %}
+    <ul id="product-list">
     </ul>
 
+    <script>
+        // Fetch data from FakeStore API
+        fetch('https://fakestoreapi.com/products')
+            .then(response => response.json())
+            .then(data => {
+                const productList = document.getElementById('product-list');
+
+                // Iterate over fetched products and create HTML elements to display them
+                data.forEach(product => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `
+                        <h3>${product.title}</h3>
+                        <img src="${product.image}" alt="${product.title}">
+                        <p>Price: $${product.price}</p>
+                        <p>Description: ${product.description}</p>
+                        <a href="#">View Product</a>
+                    `;
+                    productList.appendChild(li);
+                });
+            })
+            .catch(error => console.error('Error fetching products:', error));
+    </script>
 </body>
 </html>
