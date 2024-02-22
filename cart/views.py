@@ -1,14 +1,4 @@
-"""
-Module: views
-Description: Contains views for handling API requests and rendering HTML pages.
-
-References:
-1. https://github.com/propenster/youtube-django-ecommerce-api.git
-2. https://dev.to/nick_langat/building-a-shopping-cart-using-django-rest-framework-54i0
-3. https://github.com/F4R4N/shop-django-rest-framework.git
-4. https://github.com/jessanettica/simple-shopping-api.git
-"""
-import uuid
+import requests
 from django.shortcuts import render
 from rest_framework import generics, status
 from rest_framework.views import APIView
@@ -106,13 +96,19 @@ class ProductAPI(APIView):
     """
     serializer_class = ProductSerializer
 
-    def get(self):
+    def get(self, request):
         """
         Handle GET requests to retrieve a list of products.
         """
-        q_s = Product.objects.all()
-        serializer = self.serializer_class(q_s, many=True)
-        return Response({"data": serializer.data}, status=status.HTTP_200_OK)
+        try:
+            response = requests.get('https://fakestoreapi.com/products')
+            response.raise_for_status()
+            products_data = response.json()
+            serializer = self.serializer_class(data=products_data, many=True)
+            serializer.is_valid(raise_exception=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except requests.RequestException as e:
+            return Response({"error": f"Failed to fetch products: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def post(self, request):
         """
@@ -161,8 +157,11 @@ class CartAPI(APIView):
             status=status.HTTP_200_OK
         )
 
-    @action(detail=False, methods=['post'], url_path='remove-from-cart')
-    def remove_from_cart(self, request):
+class RemoveFromCartAPI(APIView):
+    """
+    API to handle removing a product from the cart.
+    """
+    def post(self, request):
         """
         Handle POST requests to remove a product from the cart.
 
@@ -179,10 +178,13 @@ class CartAPI(APIView):
             return Response({"message": "Product removed from the cart"}, status=status.HTTP_200_OK)
         return Response({"error": "Product ID is required"}, status=status.HTTP_400_BAD_REQUEST)
 
-    @action(detail=False, methods=['post'], url_path='clear-cart')
-    def clear_cart(self, request):
+class ClearCartAPI(APIView):
+    """
+    API to handle clearing the entire cart.
+    """
+    def post(self, request):
         """
-                Handle POST requests to clear the entire cart.
+        Handle POST requests to clear the entire cart.
 
         Args:
             request: HTTP request object.
@@ -234,5 +236,10 @@ def home(request):
     Returns:
         Response: Rendered HTML page with the list of products.
     """
-    products = Product.objects.all()
-    return render(request, 'home.html', {'products': products})
+    try:
+        response = requests.get('https://fakestoreapi.com/products')
+        response.raise_for_status()
+        products = response.json()
+        return render(request, 'home.html', {'products': products})
+    except requests.RequestException as e:
+        return render(request, 'home.html', {'error': f"Failed to fetch products: {str(e)}"})
