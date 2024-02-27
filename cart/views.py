@@ -3,7 +3,7 @@ from django.shortcuts import render
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAdminUser
+from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.decorators import action
 from rest_framework import viewsets, permissions
 from django.contrib.auth.models import User
@@ -87,14 +87,52 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
+class ProductListCreateAPIView(generics.ListCreateAPIView):
+    """
+    API endpoint for listing and creating products.
+    """
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+    permission_classes = [IsAuthenticated]
+
+    def list(self, request, *args, **kwargs):
+        """
+        Get a list of products from an external API and return them.
+        """
+        try:
+            response = requests.get('https://fakestoreapi.com/products')
+            response.raise_for_status()
+            products_data = response.json()
+            serializer = self.get_serializer(data=products_data, many=True)
+            serializer.is_valid(raise_exception=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except requests.RequestException as e:
+            return Response({"error": f"Failed to fetch products: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as e:
+            return Response({"error": f"Error processing products: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+
+    def create(self, request, *args, **kwargs):
+        """
+        Create a new product using data from the request.
+        """
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+class ProductRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    API endpoint for retrieving, updating, and deleting a product.
+    """
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+    permission_classes = [IsAuthenticated]
 
 class ProductAPI(APIView):
     """
     Single API to handle product operations
-
     Reference: https://dev.to/nick_langat/building-a-shopping-cart-using-django-rest-framework-54i0.
     """
-    serializer_class = ProductSerializer
 
     def get(self, request):
         """
@@ -104,11 +142,24 @@ class ProductAPI(APIView):
             response = requests.get('https://fakestoreapi.com/products')
             response.raise_for_status()
             products_data = response.json()
-            serializer = self.serializer_class(data=products_data, many=True)
-            serializer.is_valid(raise_exception=True)
+
+            # Serialize each product individually and save it
+            for product_data in products_data:
+                serializer = ProductSerializer(data=product_data)
+                if serializer.is_valid():
+                    serializer.save()
+                else:
+                    # If serialization fails, return the error details
+                    return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Retrieve all products after saving them
+            products = Product.objects.all()
+            serializer = ProductSerializer(products, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
         except requests.RequestException as e:
             return Response({"error": f"Failed to fetch products: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as e:
+            return Response({"error": f"Error processing products: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
 
     def post(self, request):
         """
