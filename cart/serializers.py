@@ -39,10 +39,14 @@ class ProductSerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = Product
-        fields = "__all__"
-
+        fields = ['id', 'title', 'price', 'category', 'description', 'image']
 
 class ProductDetailSerializer(serializers.ModelSerializer):
+    """
+    Serializer for detailed Product model.
+
+    Reference: https://dev.to/nick_langat/building-a-shopping-cart-using-django-rest-framework-54i0.
+    """
     class Meta:
         model = Product
         fields = '__all__'
