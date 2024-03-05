@@ -29,6 +29,9 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+AUTH_USER_MODEL = 'auth.User'
 # Define the session key for the shopping cart
 CART_SESSION_ID = 'cart'  # You can use any string as the session key
 # Application definition
