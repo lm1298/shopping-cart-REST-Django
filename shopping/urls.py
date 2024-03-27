@@ -15,25 +15,24 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from cart.views import  CartAPI, DetailUser, ListUser, ProductAPI
+from cart.views import  CartAPI, ClearCartAPI, DetailUser, ListUser, ProductAPI
 from django.conf import settings
 from django.conf.urls.static import static
-
 
 from shopping import settings
 from cart import views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('products/', ProductAPI.as_view(), name='products'),  
-    path('', views.home, name='home'),
-    path('cart/', CartAPI.as_view(), name='cart'),
-    path('cart/remove-from-cart/', CartAPI.as_view(), name='remove-from-cart'),
-    path('cart/clear-cart/', CartAPI.as_view(), name='clear-cart'),
+    path('register/', views.RegistrationAPIView.as_view(), name='register'),
+    path('users/', views.ListUser.as_view(), name='users-list'),
+    path('users/<int:pk>/', views.DetailUser.as_view(), name='user-detail'),
+    path('productapi/', views.ProductAPI.as_view(), name='products'),
+    path('products/', views.ProductAPIView.as_view(), name='products'),
     path('products/<int:pk>/', views.ProductDetailAPI.as_view(), name='product-detail'),
-    path('products/<int:pk>/delete/', views.ProductDetailAPI.as_view(), name='product-delete'),
-    path('users/', ListUser.as_view(), name='users'),  
-    path('users/<int:pk>/', DetailUser.as_view(), name='singleuser'),
+    path('cart/', views.CartAPI.as_view(), name='cart'),
+    path('cart/clear/', views.ClearCartAPI.as_view(), name='clear_cart'),
+    path('', views.home, name='home'),
 ]
 
 

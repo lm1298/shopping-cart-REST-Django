@@ -9,9 +9,12 @@ from rest_framework import viewsets, permissions
 from django.contrib.auth.models import User
 from cart.service import Cart
 from cart import serializers
-from .serializers import ProductSerializer, UserSerializer
+from .serializers import CartSerializer, ProductSerializer, UserSerializer
 from .serializers import ProductDetailSerializer, RegistrationSerializer
 from .models import Product
+from rest_framework.generics import RetrieveAPIView, DestroyAPIView
+from .models import Cart
+
 
 class RegistrationMixin:
     """
@@ -87,47 +90,6 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
-class ProductListCreateAPIView(generics.ListCreateAPIView):
-    """
-    API endpoint for listing and creating products.
-    """
-    queryset = Product.objects.all()
-    serializer_class = ProductSerializer
-    permission_classes = [IsAuthenticated]
-
-    def list(self, request, *args, **kwargs):
-        """
-        Get a list of products from an external API and return them.
-        """
-        try:
-            response = requests.get('https://fakestoreapi.com/products')
-            response.raise_for_status()
-            products_data = response.json()
-            serializer = self.get_serializer(data=products_data, many=True)
-            serializer.is_valid(raise_exception=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        except requests.RequestException as e:
-            return Response({"error": f"Failed to fetch products: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        except Exception as e:
-            return Response({"error": f"Error processing products: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
-
-    def create(self, request, *args, **kwargs):
-        """
-        Create a new product using data from the request.
-        """
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-class ProductRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
-    """
-    API endpoint for retrieving, updating, and deleting a product.
-    """
-    queryset = Product.objects.all()
-    serializer_class = ProductSerializer
-    permission_classes = [IsAuthenticated]
-
 class ProductAPI(APIView):
     """
     Single API to handle product operations
@@ -139,28 +101,24 @@ class ProductAPI(APIView):
         Handle GET requests to retrieve a list of products.
         """
         try:
+            # Fetch products from external API
             response = requests.get('https://fakestoreapi.com/products')
             response.raise_for_status()
-            products_data = response.json()
+            external_products_data = response.json()
 
-            # Serialize each product individually and save it
-            for product_data in products_data:
-                serializer = ProductSerializer(data=product_data)
-                if serializer.is_valid():
-                    serializer.save()
-                else:
-                    # If serialization fails, return the error details
-                    return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+            # Fetch products from database
+            db_products = Product.objects.all()
+            db_products_data = ProductSerializer(db_products, many=True).data
 
-            # Retrieve all products after saving them
-            products = Product.objects.all()
-            serializer = ProductSerializer(products, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            # Combine the products from the external API and the database
+            all_products_data = external_products_data + db_products_data
+
+            return Response(all_products_data, status=status.HTTP_200_OK)
         except requests.RequestException as e:
             return Response({"error": f"Failed to fetch products: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except Exception as e:
             return Response({"error": f"Error processing products: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
-
+        
     def post(self, request):
         """
         Handle POST requests to create a new product.
@@ -168,114 +126,83 @@ class ProductAPI(APIView):
         Returns:
             Response: JSON response containing the details of the created product.
         """
+        serializer = ProductSerializer(data=request.data, files=request.FILES)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+class ProductAPIView(APIView):
+    """
+    Single API to handle product operations
+    """
+    serializer_class = ProductSerializer
+
+    def get(self, request, format=None):
+        qs = Product.objects.all()
+
+        return Response(
+            {"data": self.serializer_class(qs, many=True).data}, 
+            status=status.HTTP_200_OK
+            )
+
+    def post(self, request, *args, **kwargs):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+        return Response(
+            serializer.data, 
+            status=status.HTTP_201_CREATED
+            )
 
 class ProductDetailAPI(generics.RetrieveUpdateDestroyAPIView):
     """
-    API to handle individual product operations (GET, PUT, DELETE)
+    API to handle individual product operations (GET, DELETE)
     """
+    queryset = Product.objects.all()
     serializer_class = ProductDetailSerializer
-    permission_classes = [IsAdminUser]
 
-    def get_queryset(self):
-        return Product.objects.all()
+    def get(self, request, *args, **kwargs):
+        product_id = self.kwargs.get('pk')
+
+        # Try to fetch the product from the database
+        try:
+            product = Product.objects.get(pk=product_id)
+            serializer = ProductDetailSerializer(product)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Product.DoesNotExist:
+            # If the product is not found in the database, try to fetch it from the external API
+            response = requests.get(f'https://fakestoreapi.com/products/{product_id}')
+
+            if response.status_code == 200:
+                return Response(response.json(), status=status.HTTP_200_OK)
+            else:
+                return Response({"error": "Product not found."}, status=status.HTTP_404_NOT_FOUND)
 
     def perform_destroy(self, instance):
         instance.delete()
 
+class CartAPI(generics.ListCreateAPIView):
+    serializer_class = CartSerializer
 
-class CartAPI(APIView):
-    """
-    Single API to handle cart operations
+    def get_queryset(self):
+        user = self.request.user
+        cart, created = Cart.objects.get_or_create(user=user)
+        return cart.items.all()
 
-    Contributors: Prasanna
-    References:
-    1. https://github.com/F4R4N/shop-django-rest-framework.git .
-    2. https://github.com/jessanettica/simple-shopping-api.git .
-    """
-    def get(self, request):
-        """
-        GET method for CartAPI view.
-        """
-        cart = Cart(request)
-        return Response(
-            {"data": list(cart),
-             "cart_total_price": cart.get_total_price()},
-            status=status.HTTP_200_OK
-        )
-
-class RemoveFromCartAPI(APIView):
-    """
-    API to handle removing a product from the cart.
-    """
-    def post(self, request):
-        """
-        Handle POST requests to remove a product from the cart.
-
-        Args:
-            request: HTTP request object.
-
-        Returns:
-            Response: JSON response indicating the status of the removal operation.
-        """
-        cart = Cart(request)
-        product_id = request.data.get("product_id")
-        if product_id:
-            cart.remove(product_id)
-            return Response({"message": "Product removed from the cart"}, status=status.HTTP_200_OK)
-        return Response({"error": "Product ID is required"}, status=status.HTTP_400_BAD_REQUEST)
+    def perform_create(self, serializer):
+        user = self.request.user
+        cart, created = Cart.objects.get_or_create(user=user)
+        serializer.save(cart=cart)
 
 class ClearCartAPI(APIView):
-    """
-    API to handle clearing the entire cart.
-    """
     def post(self, request):
-        """
-        Handle POST requests to clear the entire cart.
-
-        Args:
-            request: HTTP request object.
-
-        Returns:
-            Response: JSON response indicating the status of the cart clearing operation.
-        """
-        cart = Cart(request)
-        cart.clear()
-        return Response({"message": "Cart cleared successfully"}, status=status.HTTP_200_OK)
-
-    def post(self, request):
-        """
-        Handle POST requests to update the cart.
-
-        Args:
-            request: HTTP request object.
-
-        Returns:
-            Response: JSON response indicating the status of the cart update operation.
-        """
-        cart = Cart(request)
-
-        if "remove" in request.data:
-            product = request.data["product"]
-            cart.remove(product)
-        elif "clear" in request.data:
-            cart.clear()
-        else:
-            product = request.data.get("product")
-            cart.add(
-                product=product,
-                quantity=request.data.get("quantity"),
-                override_quantity=request.data.get("override_quantity", False)
-            )
-
-        return Response(
-            {"message": "cart updated"},
-            status=status.HTTP_202_ACCEPTED
-        )
+        user = request.user
+        cart, created = Cart.objects.get_or_create(user=user)
+        cart.items.all().delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 def home(request):
     """

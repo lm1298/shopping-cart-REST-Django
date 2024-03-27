@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Product
+from .models import Cart, CartItem, Product
 from django.contrib.auth.models import User
 
 class RegistrationSerializer(serializers.ModelSerializer):
@@ -32,14 +32,10 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ('username', 'email')
 
 class ProductSerializer(serializers.ModelSerializer):
-    """
-    Serializer for Product model.
-
-    Reference: https://dev.to/nick_langat/building-a-shopping-cart-using-django-rest-framework-54i0.
-    """
+    
     class Meta:
         model = Product
-        fields = ['id', 'title', 'price', 'category', 'description', 'image']
+        fields = ['id', 'title', 'price', 'description', 'category', 'image']
 
 class ProductDetailSerializer(serializers.ModelSerializer):
     """
@@ -51,7 +47,8 @@ class ProductDetailSerializer(serializers.ModelSerializer):
         model = Product
         fields = '__all__'
 
-class CartItemSerializer(serializers.Serializer):
-    product_id = serializers.IntegerField()
-    quantity = serializers.IntegerField()
-    override_quantity = serializers.BooleanField(default=False)
+class CartSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CartItem
+        fields = ['product', 'quantity']
+    
